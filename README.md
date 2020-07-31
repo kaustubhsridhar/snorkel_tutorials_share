@@ -31,6 +31,6 @@ Thats all!
 # FYI
 
 You can also navigate into visual_relation folder and open "visual_relation_testing.ipynb" and run all cells.
-### But, the seond cell which downloads ~4 GB data of data will take a little time (~15 to 20 mins)
+#### But, the second cell which downloads ~4 GB data of image, annotation data will take a little time (~15 to 20 mins)
 
 
