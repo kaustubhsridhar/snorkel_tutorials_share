@@ -2,7 +2,7 @@
 Run below in terminal:
 Clone this repository
 ```
-git clone 
+git clone https://github.com/kaustubhsridhar/snorkel_tutorials_share.git
 ```
 Create anaconda virtual environment
 ```
