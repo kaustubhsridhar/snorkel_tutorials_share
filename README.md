@@ -28,6 +28,9 @@ Go to Kernel>Restart and Run All
 
 Thats all!
 
-FYI, you can also navigate into visual_relation folder and open "visual_relation_testing.ipynb" and run all cells.
+# FYI
+
+You can also navigate into visual_relation folder and open "visual_relation_testing.ipynb" and run all cells.
+### But, the seond cell which downloads ~4 GB data of data will take a little time (~15 to 20 mins)
 
 
