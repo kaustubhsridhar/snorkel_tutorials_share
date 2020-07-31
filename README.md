@@ -4,7 +4,7 @@ Clone this repository
 ```
 git clone https://github.com/kaustubhsridhar/snorkel_tutorials_share.git
 ```
-Create anaconda virtual environment
+Create anaconda virtual environment using .yml file
 ```
 cd snorkel_tutorials_share/
 ```
@@ -17,7 +17,7 @@ conda activate snorkel_env
 ```
 
 # Test Code
-In same terminal as above run following:
+In the same terminal as above run the following:
 ```
 jupyter notebook
 ```
