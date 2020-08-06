@@ -115,20 +115,29 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, count, verbose, return_more
 	if (zero_col_counter==Z).any() and (zero_row_counter==Z).any():
 		zero_col_indices = np.where(zero_col_counter == Z)[0] # get indices of cols that are 0 in all Z submatrices of size (k+1)x(k+1)
 		zero_row_indices = np.where(zero_row_counter == Z)[0] # similarly for row
-		if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
+		if k == 2: # if submatrices are 3x3
+		#if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
 			CT_reshaped_2 = np.zeros((Z,k,k))
 			k_red = k
 			for i in range(Z): 									   # reshape
 				temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
 				temp2 = np.delete(temp, zero_row_indices[0], axis=0)
 				CT_reshaped_2[i,:,:] = temp2
-		elif min(len(zero_col_indices), len(zero_row_indices)) == 2: # if 2 sets of both 0 row & 0 col
-			CT_reshaped_2 = np.zeros((Z,k-1,k-1))
-			k_red = k-1
-			for i in range(Z): 									   # reshape
-				temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0:2], axis=1) # delete *first two* 0 col in all Z submatrices of size (k+1)x(k+1)
-				temp2 = np.delete(temp, zero_row_indices[0:2], axis=0)
-				CT_reshaped_2[i,:,:] = temp2
+		if k == 3: # if submatrices are 4x4
+			if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
+				CT_reshaped_2 = np.zeros((Z,k,k))
+				k_red = k
+				for i in range(Z): 									   # reshape
+					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
+					temp2 = np.delete(temp, zero_row_indices[0], axis=0)
+					CT_reshaped_2[i,:,:] = temp2
+			elif min(len(zero_col_indices), len(zero_row_indices)) == 2: # if 2 sets of both 0 row & 0 col
+				CT_reshaped_2 = np.zeros((Z,k-1,k-1))
+				k_red = k-1
+				for i in range(Z): 									   # reshape
+					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0:2], axis=1) # delete *first two* 0 col in all Z submatrices of size (k+1)x(k+1)
+					temp2 = np.delete(temp, zero_row_indices[0:2], axis=0)
+					CT_reshaped_2[i,:,:] = temp2
 		reduced_matrix = True
 
 	if reduced_matrix:
