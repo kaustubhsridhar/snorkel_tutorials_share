@@ -206,18 +206,20 @@ def get_p_total_new_policy(M, k, Z, count, verbose, return_more_info):
 			#if verbose: print("skipping 1d")
 			continue
 		elif isSquare(m_new):
-			ct_considered += 1
 			k_red = len(m_new)
-			if ct_considered>1 and k_red!= k_red_prev: # check if this is not the first time elif is entered. Then check for consistent reduced matrix size
-					print("different sized reduced matrices (TODO)")
-					continue
+
 			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
 			chi2_sum += chi2stat
-			k_red_prev = k_red
-		elif ~isSquare(m_new) and ~is1D(m_new):
-			print("Not square and Not 1D matrices (TODO)")
-	if no_0D+no_1D != Z: # if all reduced matrices are not 1d
-		p_val_tot = 1-chi2.cdf(chi2_sum, ct_considered*(k_red-1)*(k_red-1))
+			dof_sum += (k_red-1)*(k_red-1)
+		else: # not square, 1D, 0D ==> 2x3 or 3x2 matrices
+			n_rows = m_new.shape[0]
+			n_cols = m_new.shape[1]
+
+			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
+			chi2_sum += chi2stat
+			dof_sum += (n_rows-1)*(n_cols-1)
+	if no_0D+no_1D != Z: # if all reduced matrices are not 1d, 0d
+		p_val_tot = 1-chi2.cdf(chi2_sum, dof_sum)
 	else: 
 		p_val_tot = 1 # to be considered independent, set any value > alpha here
 	return p_val_tot, M_reduced
