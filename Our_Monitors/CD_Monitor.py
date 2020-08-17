@@ -197,7 +197,7 @@ def get_p_total_new_policy(M, k, Z, count, verbose, return_more_info):
 		return m3
 	#if verbose: print(count)
 	chi2_sum = 0
-	ct_considered = 0; no_1D = 0; no_0D = 0; M_reduced = []
+	dof_sum = 0; no_1D = 0; no_0D = 0; M_reduced = []
 	for i in range(Z):
 		m_new = remove_all_0_rows_cols(M[i])
 		M_reduced.append(m_new)
