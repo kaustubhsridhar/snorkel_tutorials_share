@@ -56,9 +56,9 @@ def NM(L_dev, Y_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_
 			CT_reshaped = np.reshape(CT.values, (Z,k+1,k+1)) 
 
 			if policy == 'old':
-				p_val_tot, CT_reduced = get_p_total_old_policy(CT_reshaped, k, Z, delta, count, verbose, return_more_info) # Older policy of one round of 0 row/col reduction and then adding delta
+				p_val_tot, CT_reduced = get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return_more_info) # Older policy of one round of 0 row/col reduction and then adding delta
 			else:
-				p_val_tot, CT_reduced = get_p_total_new_policy(CT_reshaped, k, Z, count, verbose, return_more_info) # newer policy of complete reduction
+				p_val_tot, CT_reduced = get_p_total_new_policy(CT_reshaped, k, Z, sig, count, verbose, return_more_info) # newer policy of complete reduction
 			CT_reduced_list.append(CT_reduced)
 			# checking if total p_value is lesser than chosen sig
 			if p_val_tot < sig: 
@@ -103,7 +103,7 @@ def NM(L_dev, Y_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_
 ##################################################################
 # Heuristic Policies to reduce Contingency Tables and get P values
 ##################################################################
-def get_p_total_old_policy(CT_reshaped, k, Z, delta, count, verbose, return_more_info):
+def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return_more_info):
 	# check for "both 0 row and column" in all Z submatrices of size (k+1)x(k+1); reduce from Zx(k+1)x(k+1) to Zx(k)x(k) matrix
 	zero_col_counter = np.zeros(k+1); zero_row_counter = np.zeros(k+1); 
 	reduced_matrix = False
@@ -172,14 +172,14 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, count, verbose, return_more
 	for i in range(Z):
 		if ~((CT_to_use[i,:,:]==delta).all()): # if not (all elements of kxk matrix are 0+delta), then
 			chi2stat, p, dof, exp_freq = chi2_contingency(CT_to_use[i,:,:])
+			if p<sig: # if any submatrix is dependent, whole CT is dependent
+				return p, CT_to_use
 			chi2_sum += chi2stat; actual_Z += 1
 	if verbose: print("There are ",Z-actual_Z,"/",Z," ",k,"x",k," zero matrices that weren't used in chi^2 computation")
 	p_val_tot = 1-chi2.cdf(chi2_sum, actual_Z*(k_red-1)*(k_red-1))
 	return p_val_tot, CT_to_use
 
-def get_p_total_new_policy(M, k, Z, count, verbose, return_more_info):
-	def isSquare(m): 
-		return all(len(row) == len(m) for row in m)
+def get_p_total_new_policy(M, k, Z, sig, count, verbose, return_more_info):
 	def is0D(m):
 		return m.shape[0] == 0 or m.shape[1] == 0
 	def is1D(m):
@@ -205,17 +205,13 @@ def get_p_total_new_policy(M, k, Z, count, verbose, return_more_info):
 			no_1D += 1 # assume all 1D reduced matrices are conditionally independent
 			#if verbose: print("skipping 1d")
 			continue
-		elif isSquare(m_new):
-			k_red = len(m_new)
-
-			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
-			chi2_sum += chi2stat
-			dof_sum += (k_red-1)*(k_red-1)
-		else: # not square, 1D, 0D ==> 2x3 or 3x2 matrices
+		else: # square and not square matrices (~2x3 or 3x2)
 			n_rows = m_new.shape[0]
 			n_cols = m_new.shape[1]
 
 			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
+			if p<sig: # if any submatrix is dependent, whole CT is dependent
+				return p, M_reduced
 			chi2_sum += chi2stat
 			dof_sum += (n_rows-1)*(n_cols-1)
 	if no_0D+no_1D != Z: # if all reduced matrices are not 1d, 0d
@@ -223,4 +219,3 @@ def get_p_total_new_policy(M, k, Z, count, verbose, return_more_info):
 	else: 
 		p_val_tot = 1 # to be considered independent, set any value > alpha here
 	return p_val_tot, M_reduced
-
