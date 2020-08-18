@@ -41,7 +41,7 @@ def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more
 	if verbose:
 		print("No of tables = Choosing 2 from "+str(L_dev.shape[1])+" LFs = "+str(L_dev.shape[1])+"C2 = "+str(len(CT_list)))
 		#print("Note: Showing subtables where CI is not clearly evident")
-		interact(show_CT, q=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list));
+		interact(show_CT, q=IntSlider(min=1, max=len(CT_list), value=0, step=1), CT_list=fixed(CT_list))
 
 	def get_conditional_deps(CT_list, sig, k, delta = 0):
 		"""peform 3-way table chi-square independence test and obtain test statistic chi_square 
@@ -90,7 +90,7 @@ def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more
 			"""function to return qth CT at index q-1 of CT_list"""
 			return CT_reduced_list[t[0]][t[1]]
 		print("The reduced and modified contingency tables with non-delta values are given below")
-		interact(show_CT_sub_matrices, t=Dropdown(description='index tuples (table number, submatrix number)', options=non_delta_tuple_indices), CT_reduced_list=fixed(CT_reduced_list));
+		interact(show_CT_sub_matrices, t=Dropdown(description='index tuples (table number, submatrix number)', options=non_delta_tuple_indices), CT_reduced_list=fixed(CT_reduced_list))
 	
 	if return_more_info:
 		return edges_info_dict
@@ -102,7 +102,7 @@ def CDGAM(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more
 ##################################################################
 def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return_more_info):
 	# check for "both 0 row and column" in all Z submatrices of size (k+1)x(k+1); reduce from Zx(k+1)x(k+1) to Zx(k)x(k) matrix
-	zero_col_counter = np.zeros(k+1); zero_row_counter = np.zeros(k+1); 
+	zero_col_counter = np.zeros(k+1); zero_row_counter = np.zeros(k+1)
 	reduced_matrix = False
 	# obtain count of no of 0 columns when (k+1)x(k+1) matrices are vstacked; ~ count of no of 0 rows when (k+1)x(k+1) matrices are hstacked
 	# For eg.,			[[[a,b,0], [0,0,0], [0,0,0]],	gives		(zero_col_counter, zero_row_counter) as below
@@ -111,7 +111,7 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return
 		zero_col_counter += (CT_reshaped[i,:,:]==0).all(axis=0) # find bools representing 0 columns/vertical dirn (axis = 0); add bool result to counter
 		zero_row_counter += (CT_reshaped[i,:,:]==0).all(axis=1) # similarly for row
 	# checking if any elements of zero_col_counter and zero_row_counter are equal to Z (no of submatrices)
-	#if (zero_col_counter==0).all() == False and (zero_row_counter==0).all() == False:
+	# ie checking for atleast 1 zero row and col
 	if (zero_col_counter==Z).any() and (zero_row_counter==Z).any():
 		zero_col_indices = np.where(zero_col_counter == Z)[0] # get indices of cols that are 0 in all Z submatrices of size (k+1)x(k+1)
 		zero_row_indices = np.where(zero_row_counter == Z)[0] # similarly for row
@@ -123,6 +123,10 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return
 				temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
 				temp2 = np.delete(temp, zero_row_indices[0], axis=0)
 				CT_reshaped_2[i,:,:] = temp2
+				# if submatrix still has a zero row/col, then add delta
+				if ~np.all(CT_reshaped_2[i,:,:].any(axis=0)) or ~np.all(CT_reshaped_2[i,:,:].any(axis=1)):
+					CT_reshaped_2[i,:,:] += delta
+			
 		if k == 3: # if submatrices are 4x4
 			if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
 				CT_reshaped_2 = np.zeros((Z,k,k))
@@ -131,6 +135,9 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return
 					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
 					temp2 = np.delete(temp, zero_row_indices[0], axis=0)
 					CT_reshaped_2[i,:,:] = temp2
+					# if submatrix still has a zero row/col, then add delta
+					if ~np.all(CT_reshaped_2[i,:,:].any(axis=0)) or ~np.all(CT_reshaped_2[i,:,:].any(axis=1)):
+						CT_reshaped_2[i,:,:] += delta
 			elif min(len(zero_col_indices), len(zero_row_indices)) == 2: # if 2 sets of both 0 row & 0 col
 				CT_reshaped_2 = np.zeros((Z,k-1,k-1))
 				k_red = k-1
@@ -138,6 +145,9 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return
 					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0:2], axis=1) # delete *first two* 0 col in all Z submatrices of size (k+1)x(k+1)
 					temp2 = np.delete(temp, zero_row_indices[0:2], axis=0)
 					CT_reshaped_2[i,:,:] = temp2
+					# if submatrix still has a zero row/col, then add delta
+					if ~np.all(CT_reshaped_2[i,:,:].any(axis=0)) or ~np.all(CT_reshaped_2[i,:,:].any(axis=1)):
+						CT_reshaped_2[i,:,:] += delta
 		reduced_matrix = True
 
 	if reduced_matrix:
@@ -147,29 +157,13 @@ def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return
 		CT_to_use = CT_reshaped
 		k_red = k+1
 
-	# check for any zero columns / rows in both (k)x(k) matrices in CT; if yes, add delta to all values
-	bad_table = False
-	for i,j in [(i,j) for i in range(Z) for j in [0,1]]: 
-		if ~np.all(CT_to_use[i,:,:].any(axis=j)):
-			bad_table = True
-			#n_bad += 1
-	if bad_table:
-		if delta!=0:
-			# to prevent 0 row/col in exp_freq table which in turn prevents division by 0 in statistic
-			CT_to_use = CT_to_use + delta
-			if verbose:
-				print("Adding delta to table ", count)
-		else:
-			if verbose:
-				print(bcolors.WARNING + "Error : table ",count," has a zero column/row in one (or both) of its 2x2 matrices!" + bcolors.ENDC)
-			return 1
-
 	# calculate statistic for each (k)x(k) matrix and sum
 	chi2_sum = 0; actual_Z = 0
 	for i in range(Z):
 		if ~((CT_to_use[i,:,:]==delta).all()): # if not (all elements of kxk matrix are 0+delta), then
 			chi2stat, p, dof, exp_freq = chi2_contingency(CT_to_use[i,:,:])
 			if p<sig: # if any submatrix is dependent, whole CT is dependent
+				if verbose: print("left at submatrix ", i," of CT ", count)
 				return p, CT_to_use
 			chi2_sum += chi2stat; actual_Z += 1
 	if verbose: print("There are ",Z-actual_Z,"/",Z," ",k,"x",k," zero matrices that weren't used in chi^2 computation")
@@ -194,6 +188,9 @@ def get_p_total_new_policy(M, k, Z, sig, count, verbose, return_more_info):
 		m_new = remove_all_0_rows_cols(M[i])
 		M_reduced.append(m_new)
 		#if verbose: print(m_new)
+
+	for i in range(Z):
+		m_new = M_reduced[i]
 		if is0D(m_new):
 			no_0D += 1
 			#if verbose: print("skipping 0d")
@@ -208,6 +205,7 @@ def get_p_total_new_policy(M, k, Z, sig, count, verbose, return_more_info):
 
 			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
 			if p<sig: # if any submatrix is dependent, whole CT is dependent
+				if verbose: print("left at submatrix ", i," of CT ", count)
 				return p, M_reduced
 			chi2_sum += chi2stat
 			dof_sum += (n_rows-1)*(n_cols-1)
