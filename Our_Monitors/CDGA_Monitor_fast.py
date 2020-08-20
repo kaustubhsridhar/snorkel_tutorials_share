@@ -29,7 +29,7 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 				other_LFs_list = [df['LF_'+str(m)] for m in range(L_dev.shape[1]) if (m!=i and m!=j)]
 				CT = pd.crosstab(other_LFs_list + [df['LF_'+str(i)]], df['LF_'+str(j)], margins = False) 
 
-				# prep to reindex only the LF column closest to values
+				# prep to reindex only the LF column closest to values (this is new in the fast version)
 				indices_other_LFs = [] # first get current indices of other LF columns
 				for itera in range(len(CT.index)):
 					indices_other_LFs.append(CT.index[itera][:-1])
@@ -61,7 +61,7 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 		CD_edges = []; CD_nodes = []; CD_edges_p_vals = []; p_vals_sum_dict = {}; CT_reduced_list = []
 		count = 0; #n_bad = 0
 		for CT in CT_list:
-			count+=1; Z = int(len(CT.values)/3) # no of rows/3
+			count+=1; Z = int(len(CT.values)/3) # no of rows/3 (this is new in the fast version)
 			CT_reshaped = np.reshape(CT.values, (Z,k+1,k+1)) 
 
 			if policy == 'old':
