@@ -16,18 +16,21 @@ class bcolors:
 	ENDC = '\033[0m'
 
 # Conditional Dependence Monitor Main Code
-def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more_info = False):
+def NM_fast(L_dev, Y_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return_more_info = False):
 	# create pd dataframe
-	df = pd.DataFrame(data=L_dev, columns=["LF_"+str(i) for i in range(L_dev.shape[1])])
+	Complete_dev = np.concatenate((np.array([Y_dev]).T, L_dev), axis=1)
+	df = pd.DataFrame(data=Complete_dev, columns=["GT"] + ["LF_"+str(i) for i in range(L_dev.shape[1])])
 	no_other_LFs = L_dev.shape[1]-2
+
 	def create_CT_tables(df, L_dev, k):
 		"""create all combinations of contingency table's of {LF_i, LF_j, [LF_all others]}"""
-
 		CT_list = []
 		for i in range(L_dev.shape[1]):
-			for j in [k2 for k2 in range(i, L_dev.shape[1]) if k2!=i]:
+			for j in [k for k in range(i, L_dev.shape[1]) if k!=i]:
 				other_LFs_list = [df['LF_'+str(m)] for m in range(L_dev.shape[1]) if (m!=i and m!=j)]
-				CT = pd.crosstab(other_LFs_list + [df['LF_'+str(i)]], df['LF_'+str(j)], margins = False) 
+				CT = pd.crosstab([df['GT']] + other_LFs_list + [df['LF_'+str(i)]], df['LF_'+str(j)], margins = False) 
+				#k_list = [i-1 for i in range(k+1)]; GT_indices = [i for i in range(k)]
+				#CT = CT.reindex(index=list(itertools.product(GT_indices, *[tuple(k_list)] * (no_other_LFs+1))), columns=k_list, fill_value=0)
 
 				# prep to reindex only the LF column closest to values (this is new in the fast version)
 				indices_other_LFs = [] # first get current indices of other LF columns
@@ -37,7 +40,6 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 				indices_closest_LF = [(i-1,) for i in range(k+1)]
 				all_indices = [ ind1+ind2 for ind1 in indices_other_LFs for ind2 in indices_closest_LF]
 				k_list = [i-1 for i in range(k+1)]
-				#CT = CT.reindex(index=list(itertools.product(*[tuple(k_list)] * (no_other_LFs+1))), columns=k_list, fill_value=0)
 				# reindex only the LF column closest to values
 				CT = CT.reindex(index=all_indices, columns=k_list, fill_value=0)
 				CT_list.append(CT)
@@ -71,12 +73,12 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 			CT_reduced_list.append(CT_reduced)
 			# checking if total p_value is lesser than chosen sig
 			if p_val_tot < sig: 
-				digits_LF1 = CT.index.names[no_other_LFs][3:]
+				digits_LF1 = CT.index.names[1+no_other_LFs][3:] # add 1 for the GT column
 				digits_LF2 = CT.columns.name[3:] # 3rd index onwards to remove LF_ (3 characters)
 				CD_edges.append( (int(digits_LF1), int(digits_LF2)) )
 				CD_edges_p_vals.append(p_val_tot)
 
-		#print info
+		#printing info
 		edges_info_dict = {}
 		edges_info_dict['CD_edges'] = CD_edges; edges_info_dict['CD_edges_p_vals'] = CD_edges_p_vals
 		if verbose:
@@ -92,7 +94,7 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 	if verbose:
 		non_delta_tuple_indices = []
 		for q in range(len(CT_reduced_list)):
-			for r in range(len(CT_reduced_list[q])): # (modified to len(qth element) for fast version)
+			for r in range(len(CT_reduced_list[q])):
 				delta = 1
 				if ~(CT_reduced_list[q][r]==delta).all():
 					non_delta_tuple_indices.append( ((q,r), (q,r)) ) # apending a tuple of tuples because first part of outer tuple is key and second is value passed gy slider to fn
@@ -107,6 +109,7 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 		return edges_info_dict
 	else:
 		return edges_info_dict['CD_edges']
+
 
 ##################################################################
 # Heuristic Policies to reduce Contingency Tables and get P values
@@ -225,4 +228,3 @@ def get_p_total_new_policy(M, k, Z, sig, count, verbose, return_more_info):
 	else: 
 		p_val_tot = 1 # to be considered independent, set any value > alpha here
 	return p_val_tot, M_reduced
-
