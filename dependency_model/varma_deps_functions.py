@@ -1,4 +1,4 @@
-from dependency_model.learn_deps import learn_structure, get_deps_from_inverse_sig
+from dependency_model.learn_deps import learn_structure, get_deps_from_inverse_sig, get_sorted_deps_from_inverse_sig
 import numpy as np
 
 def get_varma_edges(L_dev, thresh=1.5):
@@ -9,6 +9,15 @@ def get_varma_edges(L_dev, thresh=1.5):
     for i,j in deps_hat:
         if i < j:
             varma_deps.append((i,j))
+    return varma_deps
+
+def get_sorted_varma_edges(L_dev, thresh=1.5):
+    J_hat = learn_structure(L_dev)
+    deps_hat, J_vals = get_sorted_deps_from_inverse_sig(J_hat, thresh=thresh)
+    #sort edges in decreasing order of J
+    varma_deps = []
+    sorted_indices = np.argsort(J_vals)[::-1] # reversed after sorting in ascending order
+    varma_deps = [deps_hat[i] for i in sorted_indices]
     return varma_deps
 
 def get_varma_with_gold_edges(L_dev, Y_dev, thresh=1.5):
