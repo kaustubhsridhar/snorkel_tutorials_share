@@ -92,7 +92,7 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 	if verbose:
 		non_delta_tuple_indices = []
 		for q in range(len(CT_reduced_list)):
-			for r in range(len(CT_reduced_list[q])):
+			for r in range(len(CT_reduced_list[q])): # (modified to len(qth element) for fast version)
 				delta = 1
 				if ~(CT_reduced_list[q][r]==delta).all():
 					non_delta_tuple_indices.append( ((q,r), (q,r)) ) # apending a tuple of tuples because first part of outer tuple is key and second is value passed gy slider to fn
@@ -111,69 +111,75 @@ def CDGAM_fast(L_dev, k = 2, sig = 0.01, policy = 'new', verbose = False, return
 ##################################################################
 # Heuristic Policies to reduce Contingency Tables and get P values
 ##################################################################
-def get_p_total_old_policy(CT, k, Z, delta, sig, count, verbose, return_more_info):
-	def zero_row(m):
-		return np.any(np.all(m == 0, axis=1) == True)
-	def zero_col(m):
-		return np.any(np.all(m == 0, axis=0) == True)
-	def remove_first_0_row_column(m):
-		first_0_col_index = list(np.all(m == 0, axis=0)).index(True)
-		first_0_row_index = list(np.all(m == 0, axis=1)).index(True)
-		rowmask = np.ones(len(m), dtype=bool)
-		colmask = np.ones(len(m), dtype=bool)
-		colmask[first_0_col_index] = False
-		rowmask[first_0_row_index] = False
-		m1 = m[:,colmask]
-		m2 = m1[rowmask]
-		return m2
-	chi2_sum = 0; dof_sum = 0; M_reduced = []
-	for i in range(Z):
-		m = CT[i]
-		if k==2:
-			if zero_row(m) and zero_col(m): # if a zero row and zero col are there, remove it to get 2x2 matrix
-				m_new = remove_first_0_row_column(m)
-				if zero_row(m_new) or zero_col(m_new): # if still there is a zero row or column, add delta
-					m_new = m_new + delta
-			else: # if combo of zero row and column is not present
-				if zero_row(m) or zero_col(m): # but if there is either a zero row or a zero column
-					m_new = m + delta
-				else:
-					m_new = m
-		elif k==3:
-			if zero_row(m) and zero_col(m): # if a zero row and zero col are there, remove it to get 3x3 matrix
-				m_temp = remove_first_0_row_column(m)
-				if zero_row(m_temp) and zero_col(m_temp): # if still a zero row and zero col are there, remove it to get 2x2 matrix
-					m_new = remove_first_0_row_column(m_temp)
-					if zero_row(m_new) or zero_col(m_new): # lastly if there is a zero row or column, add delta
-						m_new = m_new + delta
-				else:
-					if zero_row(m_temp) or zero_col(m_temp): # if a second combo of zero row and column wasn't there but one of the two is, add delta
-						m_new = m_temp + delta
-					else:
-						m_new = m_temp
-			else: # if combo of zero row and column is not present
-				if zero_row(m) or zero_col(m): # but if there is either a zero row or a zero column
-					m_new = m + delta
-				else:
-					m_new = m
-		else:
-			print("only k = cardinality = 2 or 3 can be handled!")
-			#m_new = m
-		M_reduced.append(m_new)
+def get_p_total_old_policy(CT_reshaped, k, Z, delta, sig, count, verbose, return_more_info):
+	# check for "both 0 row and column" in all Z submatrices of size (k+1)x(k+1); reduce from Zx(k+1)x(k+1) to Zx(k)x(k) matrix
+	zero_col_counter = np.zeros(k+1); zero_row_counter = np.zeros(k+1)
+	reduced_matrix = False
+	# obtain count of no of 0 columns when (k+1)x(k+1) matrices are vstacked; ~ count of no of 0 rows when (k+1)x(k+1) matrices are hstacked
+	# For eg.,			[[[a,b,0], [0,0,0], [0,0,0]],	gives		(zero_col_counter, zero_row_counter) as below
+	#  2x3x3 matrix		 [[0,c,d], [0,0,0], [0,0,0]]]				[1,0,1], [0,2,2]
+	for i in range(Z): 
+		zero_col_counter += (CT_reshaped[i,:,:]==0).all(axis=0) # find bools representing 0 columns/vertical dirn (axis = 0); add bool result to counter
+		zero_row_counter += (CT_reshaped[i,:,:]==0).all(axis=1) # similarly for row
+	# checking if any elements of zero_col_counter and zero_row_counter are equal to Z (no of submatrices)
+	# ie checking for atleast 1 zero row and col
+	if (zero_col_counter==Z).any() and (zero_row_counter==Z).any():
+		zero_col_indices = np.where(zero_col_counter == Z)[0] # get indices of cols that are 0 in all Z submatrices of size (k+1)x(k+1)
+		zero_row_indices = np.where(zero_row_counter == Z)[0] # similarly for row
+		if k == 2: # if submatrices are 3x3
+		#if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
+			CT_reshaped_2 = np.zeros((Z,k,k))
+			k_red = k
+			for i in range(Z): 									   # reshape
+				temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
+				temp2 = np.delete(temp, zero_row_indices[0], axis=0)
+				CT_reshaped_2[i,:,:] = temp2
+				# if submatrix still has a zero row/col, then add delta
+				if ~np.all(CT_reshaped_2[i,:,:].any(axis=0)) or ~np.all(CT_reshaped_2[i,:,:].any(axis=1)):
+					CT_reshaped_2[i,:,:] += delta
+			
+		if k == 3: # if submatrices are 4x4
+			if min(len(zero_col_indices), len(zero_row_indices)) == 1: # if only 1 set of both 0 row & 0 col
+				CT_reshaped_2 = np.zeros((Z,k,k))
+				k_red = k
+				for i in range(Z): 									   # reshape
+					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0], axis=1) # delete *first* 0 col in all Z submatrices of size (k+1)x(k+1)
+					temp2 = np.delete(temp, zero_row_indices[0], axis=0)
+					CT_reshaped_2[i,:,:] = temp2
+					# if submatrix still has a zero row/col, then add delta
+					if ~np.all(CT_reshaped_2[i,:,:].any(axis=0)) or ~np.all(CT_reshaped_2[i,:,:].any(axis=1)):
+						CT_reshaped_2[i,:,:] += delta
+			elif min(len(zero_col_indices), len(zero_row_indices)) == 2: # if 2 sets of both 0 row & 0 col
+				CT_reshaped_2 = np.zeros((Z,k-1,k-1))
+				k_red = k-1
+				for i in range(Z): 									   # reshape
+					temp = np.delete(CT_reshaped[i,:,:], zero_col_indices[0:2], axis=1) # delete *first two* 0 col in all Z submatrices of size (k+1)x(k+1)
+					temp2 = np.delete(temp, zero_row_indices[0:2], axis=0)
+					CT_reshaped_2[i,:,:] = temp2
+					# if submatrix still has a zero row/col, then add delta
+					if ~np.all(CT_reshaped_2[i,:,:].any(axis=0)) or ~np.all(CT_reshaped_2[i,:,:].any(axis=1)):
+						CT_reshaped_2[i,:,:] += delta
+		reduced_matrix = True
 
+	if reduced_matrix:
+		CT_to_use = CT_reshaped_2
+		#if verbose and return_more_info: print(CT_reshaped_2)
+	else:
+		CT_to_use = CT_reshaped
+		k_red = k+1
+
+	# calculate statistic for each (k)x(k) matrix and sum
+	chi2_sum = 0; actual_Z = 0
 	for i in range(Z):
-		m_new = M_reduced[i]
-		if ~(np.all(m_new==delta)): # if not (all elements of 2x2 or 3x3 matrix are 0+delta), then
-			n_rows = m_new.shape[0]; n_cols = m_new.shape[1]
-			chi2stat, p, dof, exp_freq = chi2_contingency(m_new)
+		if ~((CT_to_use[i,:,:]==delta).all()): # if not (all elements of kxk matrix are 0+delta), then
+			chi2stat, p, dof, exp_freq = chi2_contingency(CT_to_use[i,:,:])
 			if p<sig: # if any submatrix is dependent, whole CT is dependent
-					if verbose: print("left at submatrix ", i," of CT ", count)
-					return p, M_reduced
-			chi2_sum += chi2stat
-			dof_sum += (n_rows-1)*(n_cols-1)
-	
-	p_val_tot = 1-chi2.cdf(chi2_sum, dof_sum)
-	return p_val_tot, M_reduced
+				if verbose: print("left at submatrix ", i," of CT ", count)
+				return p, CT_to_use
+			chi2_sum += chi2stat; actual_Z += 1
+	if verbose: print("There are ",Z-actual_Z,"/",Z," ",k,"x",k," zero matrices that weren't used in chi^2 computation")
+	p_val_tot = 1-chi2.cdf(chi2_sum, actual_Z*(k_red-1)*(k_red-1))
+	return p_val_tot, CT_to_use
 
 def get_p_total_new_policy(M, k, Z, sig, count, verbose, return_more_info):
 	def is0D(m):
@@ -219,3 +225,4 @@ def get_p_total_new_policy(M, k, Z, sig, count, verbose, return_more_info):
 	else: 
 		p_val_tot = 1 # to be considered independent, set any value > alpha here
 	return p_val_tot, M_reduced
+
